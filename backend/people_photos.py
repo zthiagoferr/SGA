@@ -83,8 +83,31 @@ def upload_person_photo(
             allowed_formats=["jpg", "jpeg", "png", "webp"]
         )
         url = result["secure_url"]
-    except Exception:
-        raise HTTPException(502, "Falha ao enviar foto ao Cloudinary")
+    except Exception as exc:
+        import logging
+
+        detail = str(exc)
+
+        # Não registrar credenciais nos logs.
+        for env_name in (
+            "CLOUDINARY_API_KEY",
+            "CLOUDINARY_API_SECRET",
+            "CLOUDINARY_URL",
+        ):
+            secret = os.getenv(env_name, "")
+            if secret:
+                detail = detail.replace(secret, "[REDACTED]")
+
+        logging.getLogger("uvicorn.error").error(
+            "CLOUDINARY_UPLOAD_ERROR [%s]: %s",
+            type(exc).__name__,
+            detail[:500],
+        )
+
+        raise HTTPException(
+            502,
+            "Falha ao enviar foto ao Cloudinary"
+        ) from None
 
     with engine.begin() as conn:
         row = conn.execute(text("""
