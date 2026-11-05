@@ -11,6 +11,13 @@ type Booking = { id: string; spaceName: string; personId: string; title: string;
 type Store = { spaces: Space[]; people: Person[]; bookings: Booking[] };
 const STORAGE_PREFIX='sga-data-v3:';
 const initial: Store = { spaces: [], people: [], bookings: [] };
+
+const API_BASE_URL =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? 'http://127.0.0.1:8000'
+    : 'https://sga-kpxc.onrender.com';
+
 @Component({ selector:'app-root',standalone:true,imports:[CommonModule,FormsModule],templateUrl:'./app.component.html' })
 export class AppComponent implements OnInit {
  view: 'landing'|'login'|'app'='landing'; page: Page='overview'; theme:'dark'|'light'='dark'; mobileMenu=false;
@@ -34,7 +41,7 @@ export class AppComponent implements OnInit {
       const token = await user.getIdToken();
 
       const response = await fetch(
-        'http://127.0.0.1:8000/api/me',
+        (API_BASE_URL + '/api/me'),
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -180,7 +187,7 @@ today=new Date();
    const token = await user.getIdToken();
 
    const response = await fetch(
-    'http://127.0.0.1:8000/api/environments',
+    (API_BASE_URL + '/api/environments'),
     {
      headers: {
       Authorization: `Bearer ${token}`
@@ -229,7 +236,7 @@ today=new Date();
   if (!this.user) throw new Error('Faça login novamente.');
 
   const token = await this.user.getIdToken();
-  const url = 'http://127.0.0.1:8000/api/environments'
+  const url = (API_BASE_URL + '/api/environments')
     + (id ? '/' + encodeURIComponent(id) : '');
 
   const response = await fetch(url, {
@@ -266,7 +273,7 @@ today=new Date();
   if(!this.user)throw new Error('Faça login novamente.');
 
   const token=await this.user.getIdToken();
-  const url='http://127.0.0.1:8000/api/people'
+  const url=(API_BASE_URL + '/api/people')
     +(id?'/'+encodeURIComponent(id):'');
 
   const response=await fetch(url,{
@@ -295,7 +302,7 @@ today=new Date();
    const token=await user.getIdToken();
 
    const response=await fetch(
-    'http://127.0.0.1:8000/api/people',
+    (API_BASE_URL + '/api/people'),
     {headers:{Authorization:`Bearer ${token}`}}
    );
 
@@ -349,7 +356,7 @@ today=new Date();
    const token=await user.getIdToken();
 
    const response=await fetch(
-    'http://127.0.0.1:8000/api/reservations',
+    (API_BASE_URL + '/api/reservations'),
     {
      headers:{
       Authorization:`Bearer ${token}`
@@ -407,7 +414,7 @@ today=new Date();
 
   const token=await this.user.getIdToken();
 
-  const url='http://127.0.0.1:8000/api/reservations'
+  const url=(API_BASE_URL + '/api/reservations')
    +(id?'/'+encodeURIComponent(id):'');
 
   const response=await fetch(url,{

@@ -21,6 +21,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://sga-devpilot-ai.vercel.app",
         "http://127.0.0.1:4200",
         "http://localhost:4200",
     ],
