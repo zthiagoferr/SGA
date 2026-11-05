@@ -11,3 +11,39 @@ dist/
 .env
 .env.*
 public/assets/firebase-config.json
+
+backend/.env
+backend/.venv/
+
+backend/firebase-service-account.json
+
+backend/firebase-service-account.json
+
+backend/firebase-service-account.json
+
+# Firebase Admin SDK
+backend/firebase-service-account.json
+**/*firebase-adminsdk*.json
+
+# Credenciais e ambientes virtuais
+**/.env
+**/.venv/
+
+# Backups locais
+*.bak
+*.bak-*
+*.save
+
+# Arquivos temporários Python
+__pycache__/
+*.pyc
+
+# Credenciais e configurações privadas
+**/firebase-service-account.json
+**/*firebase-adminsdk*.json
+**/.env
+**/.env.*
+!**/.env.example
+
+# Ambientes virtuais
+**/.venv/

@@ -15,11 +15,67 @@ const initial: Store = { spaces: [], people: [], bookings: [] };
 export class AppComponent implements OnInit {
  view: 'landing'|'login'|'app'='landing'; page: Page='overview'; theme:'dark'|'light'='dark'; mobileMenu=false;
  data: Store=structuredClone(initial); search=''; modal:''|'space'|'person'|'booking'=''; editId=''; message=''; problem='';
+ spaceBusy=false;
  spaceForm={name:'',location:'',capacity:12,type:'Reunião'};
  personForm={name:'',role:'',email:'',photo:''};
  bookingForm={spaceName:'',personId:'',title:'',start:'',end:''};
  auth:Auth|null=null; user:User|null=null; authReady=false; authError=''; authBusy=false; loginEmail=''; loginPassword=''; registerName=''; registerBirthDate=''; register=false; private unlisten?:()=>void;
- today=new Date();
+
+  apiRole = '';
+  apiProfileName = '';
+  apiStatus = '';
+
+  async loadBackendProfile(user: User): Promise<void> {
+    this.apiStatus = 'Consultando perfil...';
+    this.apiRole = '';
+    this.apiProfileName = '';
+
+    try {
+      const token = await user.getIdToken();
+
+      const response = await fetch(
+        'http://127.0.0.1:8000/api/me',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (this.user?.uid !== user.uid) return;
+
+      if (result.registered && result.profile) {
+        this.apiRole = result.profile.role;
+        this.apiProfileName = result.profile.full_name;
+
+        const roles: Record<string, string> = {
+          coordinator: 'Coordenador',
+          admin: 'Administrador',
+          user: 'Usuário'
+        };
+
+        this.apiStatus = roles[this.apiRole] || 'Usuário';
+        this.message = 'Perfil confirmado no Neon: ' + this.apiStatus;
+      } else {
+        this.apiStatus = 'Perfil não cadastrado no Neon';
+        this.problem = this.apiStatus;
+      }
+
+    } catch (error) {
+      if (this.user?.uid !== user.uid) return;
+      console.error('Falha na consulta do perfil:', error);
+      this.apiStatus = 'API indisponível ou acesso recusado';
+      this.problem = this.apiStatus;
+    }
+  }
+
+today=new Date();
  get accountName():string { const profile=this.user?.displayName?.trim();return profile || this.user?.email?.split('@')[0] || 'Usuário'; }
  get maxBirthDate():string { const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); }
  validBirthDate(value:string):boolean { if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(value+'T12:00:00');return !isNaN(date.getTime())&&date.toISOString().slice(0,10)===value&&date.getFullYear()>=1900&&value<=this.maxBirthDate; }
@@ -43,7 +99,7 @@ export class AppComponent implements OnInit {
   const app:FirebaseApp=getApps()[0]||initializeApp(config);
   this.auth=getAuth(app);
   await setPersistence(this.auth,browserLocalPersistence);
-  this.unlisten=onAuthStateChanged(this.auth,user=>{this.user=user;this.loadUserData();this.authReady=true;if(user&&this.view==='login')this.view='app';if(!user&&this.view==='app')this.view='login';},()=>{this.authReady=true;this.authError='Não foi possível verificar a sessão.'});
+  this.unlisten=onAuthStateChanged(this.auth,user=>{this.user=user;this.loadUserData();this.authReady=true;if(user){void this.loadBackendProfile(user);void this.loadEnvironments(user);void this.loadPeople(user);void this.loadBookings(user);}else{this.apiRole='';this.apiProfileName='';this.apiStatus='';}if(user&&this.view==='login')this.view='app';if(!user&&this.view==='app')this.view='login';},()=>{this.authReady=true;this.authError='Não foi possível verificar a sessão.'});
  }catch(e){this.authReady=true;this.authError=e instanceof Error?e.message:'Firebase não configurado.'}}
  async submitLogin(){
   if(!this.auth){this.authError='Configure o Firebase Authentication para fazer login.';return;}
@@ -118,26 +174,523 @@ export class AppComponent implements OnInit {
  personName(id:string){return this.people.find(p=>p.id===id)?.name||'Pessoa removida'}
  isBusy(id:string){const n=this.localNow();return this.bookings.some(b=>b.spaceName.trim().toLowerCase()===this.spaceName(id).trim().toLowerCase()&&b.start<=n&&b.end>n)}
  dateTime(v:string){return v?new Date(v).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}
+
+ async loadEnvironments(user: User): Promise<void> {
+  try {
+   const token = await user.getIdToken();
+
+   const response = await fetch(
+    'http://127.0.0.1:8000/api/environments',
+    {
+     headers: {
+      Authorization: `Bearer ${token}`
+     }
+    }
+   );
+
+   if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+   }
+
+   const ambientes = await response.json();
+
+   if (!Array.isArray(ambientes)) {
+    throw new Error('Resposta inválida da API');
+   }
+
+   if (this.user?.uid !== user.uid) return;
+
+   this.data.spaces = ambientes.map((a: any) => ({
+    id: String(a.id),
+    name: a.name,
+    location: a.location || '',
+    capacity: a.capacity || 1,
+    type: 'Reunião'
+   }));
+
+   console.log(
+    'SGA: ambientes carregados do Neon:',
+    this.data.spaces.length
+   );
+
+  } catch (error) {
+   if (this.user?.uid !== user.uid) return;
+   console.error('SGA: erro ao carregar ambientes:', error);
+   this.problem = 'Não foi possível carregar os ambientes do Neon.';
+  }
+ }
+
+
+ private async sendEnvironment(
+  method: 'POST'|'PUT'|'DELETE',
+  id?: string,
+  payload?: {name:string;location:string;capacity:number}
+ ): Promise<any> {
+  if (!this.user) throw new Error('Faça login novamente.');
+
+  const token = await this.user.getIdToken();
+  const url = 'http://127.0.0.1:8000/api/environments'
+    + (id ? '/' + encodeURIComponent(id) : '');
+
+  const response = await fetch(url, {
+   method,
+   headers: {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json'
+   },
+   ...(payload ? {body: JSON.stringify(payload)} : {})
+  });
+
+  if (!response.ok) {
+   const error = await response.json().catch(() => null);
+   const detail = error?.detail;
+   throw new Error(
+    typeof detail === 'string'
+      ? detail
+      : `Erro HTTP ${response.status}`
+   );
+  }
+
+  return response.status === 204 ? null : response.json();
+ }
+
  openSpace(space?:Space){this.editId=space?.id||'';this.spaceForm=space?{name:space.name,location:space.location,capacity:space.capacity,type:space.type}:{name:'',location:'',capacity:12,type:'Reunião'};this.modal='space';this.problem=''}
+
+ peopleBusy=false;
+
+ private async sendPerson(
+  method: 'POST'|'PUT'|'DELETE',
+  id?: string,
+  payload?: {name:string;role:string;email:string}
+ ): Promise<any> {
+  if(!this.user)throw new Error('Faça login novamente.');
+
+  const token=await this.user.getIdToken();
+  const url='http://127.0.0.1:8000/api/people'
+    +(id?'/'+encodeURIComponent(id):'');
+
+  const response=await fetch(url,{
+   method,
+   headers:{
+    Authorization:`Bearer ${token}`,
+    'Content-Type':'application/json'
+   },
+   ...(payload?{body:JSON.stringify(payload)}:{})
+  });
+
+  if(!response.ok){
+   const error=await response.json().catch(()=>null);
+   throw new Error(
+    typeof error?.detail==='string'
+     ?error.detail
+     :`Erro HTTP ${response.status}`
+   );
+  }
+
+  return response.status===204?null:response.json();
+ }
+
+ async loadPeople(user:User):Promise<void>{
+  try{
+   const token=await user.getIdToken();
+
+   const response=await fetch(
+    'http://127.0.0.1:8000/api/people',
+    {headers:{Authorization:`Bearer ${token}`}}
+   );
+
+   if(!response.ok)throw new Error(`HTTP ${response.status}`);
+
+   const pessoas=await response.json();
+
+   if(!Array.isArray(pessoas)){
+    throw new Error('Resposta inválida da API de Pessoas');
+   }
+
+   if(this.user?.uid!==user.uid)return;
+
+   this.data.people=pessoas.map((p:any)=>({
+    id:String(p.id),
+    name:p.full_name,
+    role:p.role_description,
+    email:p.email,
+    photo:p.photo_url||''
+   }));
+
+   console.log(
+    'SGA: pessoas carregadas do Neon:',
+    this.data.people.length
+   );
+
+  }catch(error){
+   if(this.user?.uid!==user.uid)return;
+   this.data.people=[];
+   console.error('Erro ao carregar Pessoas:',error);
+   this.problem='Não foi possível carregar Pessoas do Neon.';
+  }
+ }
+
  openPerson(person?:Person){this.editId=person?.id||'';this.personForm=person?{name:person.name,role:person.role,email:person.email,photo:person.photo||''}:{name:'',role:'',email:'',photo:''};this.modal='person';this.problem=''}
+
+ bookingsBusy=false;
+
+ private localDateTime(value:string):string{
+  const d=new Date(value);
+
+  if(Number.isNaN(d.getTime()))return '';
+
+  const pad=(n:number)=>String(n).padStart(2,'0');
+
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+ }
+
+ async loadBookings(user:User):Promise<void>{
+  try{
+   const token=await user.getIdToken();
+
+   const response=await fetch(
+    'http://127.0.0.1:8000/api/reservations',
+    {
+     headers:{
+      Authorization:`Bearer ${token}`
+     }
+    }
+   );
+
+   if(!response.ok){
+    throw new Error(`HTTP ${response.status}`);
+   }
+
+   const reservas=await response.json();
+
+   if(!Array.isArray(reservas)){
+    throw new Error('Resposta inválida da API');
+   }
+
+   if(this.user?.uid!==user.uid)return;
+
+   this.data.bookings=reservas.map((r:any)=>({
+    id:String(r.id),
+    spaceName:r.environment_name,
+    personId:String(r.person_id),
+    title:r.title,
+    start:this.localDateTime(r.starts_at),
+    end:this.localDateTime(r.ends_at)
+   }));
+
+   console.log(
+    'SGA: reservas carregadas do Neon:',
+    this.data.bookings.length
+   );
+
+  }catch(error){
+   if(this.user?.uid!==user.uid)return;
+
+   this.data.bookings=[];
+   console.error('Erro ao carregar reservas:',error);
+   this.problem='Não foi possível carregar as reservas do Neon.';
+  }
+ }
+
+ private async sendBooking(
+  method:'POST'|'DELETE',
+  id?:string,
+  payload?:{
+   environment_id:number;
+   person_id:number;
+   title:string;
+   starts_at:string;
+   ends_at:string;
+  }
+ ):Promise<void>{
+  if(!this.user)throw new Error('Faça login novamente.');
+
+  const token=await this.user.getIdToken();
+
+  const url='http://127.0.0.1:8000/api/reservations'
+   +(id?'/'+encodeURIComponent(id):'');
+
+  const response=await fetch(url,{
+   method,
+   headers:{
+    Authorization:`Bearer ${token}`,
+    'Content-Type':'application/json'
+   },
+   ...(payload?{body:JSON.stringify(payload)}:{})
+  });
+
+  if(!response.ok){
+   const error=await response.json().catch(()=>null);
+   throw new Error(
+    typeof error?.detail==='string'
+     ?error.detail
+     :`Erro HTTP ${response.status}`
+   );
+  }
+ }
+
  openBooking(space?:Space){this.editId='';this.bookingForm={spaceName:space?.name||'',personId:'',title:'',start:'',end:''};this.modal='booking';this.problem=''}
  closeModal(){this.modal='';this.problem=''}
  selectPhoto(e:Event){const file=(e.target as HTMLInputElement).files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){this.problem='Escolha uma imagem JPG, PNG ou WebP.';return}if(file.size>2*1024*1024){this.problem='A foto deve ter no máximo 2 MB.';return}const reader=new FileReader();reader.onload=()=>{this.personForm.photo=String(reader.result||'');this.problem=''};reader.readAsDataURL(file)}
- submit(){this.problem='';if(this.modal==='space'){
-  const x=this.spaceForm;if(!x.name.trim()||!x.location.trim()||!Number.isFinite(+x.capacity)||+x.capacity<1){this.problem='Preencha o nome, a localização e a capacidade.';return}
-  if(this.editId){const s=this.spaces.find(i=>i.id===this.editId);if(s)Object.assign(s,{...x,name:x.name.trim(),location:x.location.trim(),capacity:+x.capacity})}else this.spaces.push({...x,id:this.id(),name:x.name.trim(),location:x.location.trim(),capacity:+x.capacity});
+ async submit(){this.problem='';if(this.modal==='space'){
+  if(this.spaceBusy)return;
+
+  const x=this.spaceForm;
+  if(!x.name.trim()||!x.location.trim()||
+     !Number.isFinite(+x.capacity)||+x.capacity<1){
+   this.problem='Preencha nome, localização e capacidade.';
+   return;
+  }
+
+  this.spaceBusy=true;
+
+  try {
+   const editing=Boolean(this.editId);
+   const result=await this.sendEnvironment(
+    editing?'PUT':'POST',
+    editing?this.editId:undefined,
+    {
+     name:x.name.trim(),
+     location:x.location.trim(),
+     capacity:+x.capacity
+    }
+   );
+
+   const ambiente:Space={
+    id:String(result.id),
+    name:result.name,
+    location:result.location||'',
+    capacity:result.capacity||1,
+    type:x.type
+   };
+
+   if(editing){
+    this.data.spaces=this.spaces.map(s=>
+     s.id===ambiente.id?ambiente:s
+    );
+   }else{
+    this.data.spaces=[...this.spaces,ambiente];
+   }
+
+   this.closeModal();
+   this.message=editing
+    ?'Ambiente atualizado no Neon.'
+    :'Ambiente cadastrado no Neon.';
+  }catch(error){
+   this.problem=error instanceof Error
+    ?error.message
+    :'Erro ao salvar ambiente.';
+  }finally{
+   this.spaceBusy=false;
+  }
  }else if(this.modal==='person'){
-  const x=this.personForm;if(!x.name.trim()||!x.role.trim()||!x.email.includes('@')){this.problem='Informe nome, função e um e-mail válido.';return}
-  if(this.editId){const p=this.people.find(i=>i.id===this.editId);if(p)Object.assign(p,{...x,name:x.name.trim()})}else this.people.push({...x,id:this.id(),name:x.name.trim()});
+  if(this.peopleBusy)return;
+
+  const x=this.personForm;
+
+  if(!x.name.trim()||!x.role.trim()||!x.email.includes('@')){
+   this.problem='Informe nome, função e um e-mail válido.';
+   return;
+  }
+
+  if(x.photo){
+   this.problem='O armazenamento de fotos ainda não está disponível no Neon. Remova a foto para salvar.';
+   return;
+  }
+
+  this.peopleBusy=true;
+
+  try{
+   const editing=Boolean(this.editId);
+
+   const result=await this.sendPerson(
+    editing?'PUT':'POST',
+    editing?this.editId:undefined,
+    {
+     name:x.name.trim(),
+     role:x.role.trim(),
+     email:x.email.trim()
+    }
+   );
+
+   const pessoa:Person={
+    id:String(result.id),
+    name:result.full_name,
+    role:result.role_description,
+    email:result.email,
+    photo:result.photo_url||''
+   };
+
+   if(editing){
+    this.data.people=this.people.map(p=>
+     p.id===pessoa.id?pessoa:p
+    );
+   }else{
+    this.data.people=[...this.people,pessoa];
+   }
+
+   this.closeModal();
+   this.message=editing
+    ?'Pessoa atualizada no Neon.'
+    :'Pessoa cadastrada no Neon.';
+
+  }catch(error){
+   this.problem=error instanceof Error
+    ?error.message
+    :'Erro ao salvar pessoa.';
+  }finally{
+   this.peopleBusy=false;
+  }
+
+  return;
  }else if(this.modal==='booking'){
-  const x=this.bookingForm;if(!x.spaceName.trim()||!x.personId||!x.title.trim()||!x.start||!x.end){this.problem='Preencha todos os dados da reserva.';return}
-  if(x.start>=x.end){this.problem='O fim deve ser depois do início.';return}
-  if(this.bookings.some(b=>(b.spaceName.trim().toLowerCase()===x.spaceName.trim().toLowerCase()||b.personId===x.personId)&&x.start<b.end&&x.end>b.start)){this.problem='Conflito de horário: o ambiente ou responsável já está reservado.';return}
-  this.data.bookings.push({...x,id:this.id(),spaceName:x.spaceName.trim(),title:x.title.trim()});
+  if(this.bookingsBusy)return;
+
+  const x=this.bookingForm;
+
+  if(!x.spaceName.trim()||!x.personId||
+     !x.title.trim()||!x.start||!x.end){
+   this.problem='Preencha todos os dados da reserva.';
+   return;
+  }
+
+  const inicio=new Date(x.start);
+  const fim=new Date(x.end);
+
+  if(
+   Number.isNaN(inicio.getTime())||
+   Number.isNaN(fim.getTime())||
+   inicio>=fim
+  ){
+   this.problem='Informe um período válido.';
+   return;
+  }
+
+  const matches=this.spaces.filter(s=>
+   s.name.trim().toLowerCase()===
+   x.spaceName.trim().toLowerCase()
+  );
+
+  if(matches.length!==1){
+   this.problem=matches.length===0
+    ?'Selecione um ambiente cadastrado.'
+    :'Existem ambientes com o mesmo nome. Use um nome único.';
+   return;
+  }
+
+  const ambiente=matches[0];
+
+  const pessoa=this.people.find(p=>p.id===x.personId);
+
+  if(!pessoa){
+   this.problem='Selecione uma pessoa cadastrada.';
+   return;
+  }
+
+  this.bookingsBusy=true;
+
+  try{
+   await this.sendBooking('POST',undefined,{
+    environment_id:Number(ambiente.id),
+    person_id:Number(pessoa.id),
+    title:x.title.trim(),
+    starts_at:inicio.toISOString(),
+    ends_at:fim.toISOString()
+   });
+
+   await this.loadBookings(this.user!);
+
+   this.closeModal();
+   this.problem='';
+   this.message='Reserva cadastrada no Neon.';
+
+  }catch(error){
+   this.problem=error instanceof Error
+    ?error.message
+    :'Erro ao salvar reserva.';
+  }finally{
+   this.bookingsBusy=false;
+  }
+
+  return;
  }else return;
  this.saveStore();if(!this.problem)this.closeModal();
  }
- removeSpace(s:Space){if(this.bookings.some(b=>b.spaceName.trim().toLowerCase()===s.name.trim().toLowerCase())){this.problem='Exclua as reservas deste ambiente antes de removê-lo.';return}if(confirm(`Excluir ${s.name}?`)){this.data.spaces=this.spaces.filter(x=>x.id!==s.id);this.saveStore()}}
- removePerson(p:Person){if(this.bookings.some(b=>b.personId===p.id)){this.problem='Exclua as reservas desta pessoa antes de removê-la.';return}if(confirm(`Excluir ${p.name}?`)){this.data.people=this.people.filter(x=>x.id!==p.id);this.saveStore()}}
- removeBooking(b:Booking){if(confirm(`Cancelar reserva: ${b.title}?`)){this.data.bookings=this.data.bookings.filter(x=>x.id!==b.id);this.saveStore()}}
+ async removeSpace(s:Space){
+  if(this.spaceBusy)return;
+
+  if(this.bookings.some(b=>
+   b.spaceName.trim().toLowerCase()===s.name.trim().toLowerCase()
+  )){
+   this.problem='Exclua as reservas deste ambiente antes de removê-lo.';
+   return;
+  }
+
+  if(!confirm(`Excluir ${s.name}?`))return;
+
+  this.spaceBusy=true;
+  this.problem='';
+
+  try{
+   await this.sendEnvironment('DELETE',s.id);
+   this.data.spaces=this.spaces.filter(x=>x.id!==s.id);
+   this.message='Ambiente excluído do Neon.';
+  }catch(error){
+   this.problem=error instanceof Error
+    ?error.message
+    :'Não foi possível excluir o ambiente.';
+  }finally{
+   this.spaceBusy=false;
+  }
+ }
+ async removePerson(p:Person){
+  if(this.peopleBusy)return;
+
+  if(this.bookings.some(b=>b.personId===p.id)){
+   this.problem='Exclua as reservas desta pessoa antes de removê-la.';
+   return;
+  }
+
+  if(!confirm(`Excluir ${p.name}?`))return;
+
+  this.peopleBusy=true;
+  this.problem='';
+
+  try{
+   await this.sendPerson('DELETE',p.id);
+   this.data.people=this.people.filter(x=>x.id!==p.id);
+   this.message='Pessoa excluída do Neon.';
+  }catch(error){
+   this.problem=error instanceof Error
+    ?error.message
+    :'Erro ao excluir pessoa.';
+  }finally{
+   this.peopleBusy=false;
+  }
+ }
+ async removeBooking(b:Booking){
+  if(this.bookingsBusy)return;
+
+  if(!confirm(`Cancelar reserva: ${b.title}?`))return;
+
+  this.bookingsBusy=true;
+  this.problem='';
+
+  try{
+   await this.sendBooking('DELETE',b.id);
+
+   this.data.bookings=this.data.bookings.filter(
+    x=>x.id!==b.id
+   );
+
+   this.message='Reserva cancelada no Neon.';
+
+  }catch(error){
+   this.problem=error instanceof Error
+    ?error.message
+    :'Erro ao cancelar reserva.';
+  }finally{
+   this.bookingsBusy=false;
+  }
+ }
 }
