@@ -29,6 +29,13 @@ export class AppComponent implements OnInit {
  auth:Auth|null=null; user:User|null=null; authReady=false; authError=''; authBusy=false; loginEmail=''; loginPassword=''; registerName=''; registerBirthDate=''; register=false; private unlisten?:()=>void;
 
   apiRole = '';
+
+ get canManage():boolean {
+  return this.apiRole==='admin' ||
+         this.apiRole==='coordinator';
+ }
+
+
   apiProfileName = '';
   apiStatus = '';
 
