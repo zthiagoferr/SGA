@@ -15,9 +15,11 @@ router = APIRouter(
 
 # Inicializa Firebase Admin
 if not firebase_admin._apps:
-    arquivo = Path(__file__).with_name(
-        "firebase-service-account.json"
-    )
+    arquivo = Path("/etc/secrets/firebase-service-account.json")
+    if not arquivo.exists():
+        arquivo = Path(__file__).with_name(
+            "firebase-service-account.json"
+        )
     cred = credentials.Certificate(str(arquivo))
     firebase_admin.initialize_app(cred)
 
