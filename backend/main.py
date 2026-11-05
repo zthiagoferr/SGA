@@ -1,6 +1,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import FastAPI, Depends
+from people_photos import router as photos_router
 from reservations import router as reservations_router
 from sqlalchemy import text
 
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(environments_router)
 app.include_router(people_router)
+app.include_router(photos_router)
 app.include_router(reservations_router)
 
 

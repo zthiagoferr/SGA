@@ -344,7 +344,7 @@ today=new Date();
   }
  }
 
- openPerson(person?:Person){this.editId=person?.id||'';this.personForm=person?{name:person.name,role:person.role,email:person.email,photo:person.photo||''}:{name:'',role:'',email:'',photo:''};this.modal='person';this.problem=''}
+ openPerson(person?:Person){this.selectedPersonPhoto=null;this.editId=person?.id||'';this.personForm=person?{name:person.name,role:person.role,email:person.email,photo:person.photo||''}:{name:'',role:'',email:'',photo:''};this.modal='person';this.problem=''}
 
  bookingsBusy=false;
 
@@ -445,7 +445,78 @@ today=new Date();
 
  openBooking(space?:Space){this.editId='';this.bookingForm={spaceName:space?.name||'',personId:'',title:'',start:'',end:''};this.modal='booking';this.problem=''}
  closeModal(){this.modal='';this.problem=''}
- selectPhoto(e:Event){const file=(e.target as HTMLInputElement).files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){this.problem='Escolha uma imagem JPG, PNG ou WebP.';return}if(file.size>2*1024*1024){this.problem='A foto deve ter no máximo 2 MB.';return}const reader=new FileReader();reader.onload=()=>{this.personForm.photo=String(reader.result||'');this.problem=''};reader.readAsDataURL(file)}
+
+ selectedPersonPhoto:File|null=null;
+
+ selectPhoto(e:Event){
+  const input=e.target as HTMLInputElement;
+  const file=input.files?.[0];
+  if(!file)return;
+
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)){
+   this.problem='Escolha uma imagem JPG, PNG ou WebP.';
+   input.value='';
+   return;
+  }
+
+  if(file.size>2*1024*1024){
+   this.problem='A foto deve ter no máximo 2 MB.';
+   input.value='';
+   return;
+  }
+
+  this.selectedPersonPhoto=file;
+  this.problem='';
+
+  const reader=new FileReader();
+  reader.onload=()=>{
+   if(this.selectedPersonPhoto===file){
+    this.personForm.photo=String(reader.result||'');
+   }
+  };
+  reader.readAsDataURL(file);
+ }
+
+ clearSelectedPersonPhoto(){
+  this.selectedPersonPhoto=null;
+  this.personForm.photo=this.people.find(
+   p=>p.id===this.editId
+  )?.photo||'';
+ }
+
+ private async uploadPersonPhoto(id:string,file:File):Promise<string>{
+  if(!this.user)throw new Error('Faça login novamente.');
+
+  const token=await this.user.getIdToken();
+  const form=new FormData();
+  form.append('file',file,file.name);
+
+  const response=await fetch(
+   API_BASE_URL+'/api/people/'+encodeURIComponent(id)+'/photo',
+   {
+    method:'POST',
+    headers:{Authorization:`Bearer ${token}`},
+    body:form
+   }
+  );
+
+  if(!response.ok){
+   const error=await response.json().catch(()=>null);
+   throw new Error(
+    typeof error?.detail==='string'
+     ?error.detail
+     :'Falha no upload: HTTP '+response.status
+   );
+  }
+
+  const result=await response.json();
+  if(typeof result.photo_url!=='string'||!result.photo_url){
+   throw new Error('API não retornou a URL da imagem.');
+  }
+
+  return result.photo_url;
+ }
+
  async submit(){this.problem='';if(this.modal==='space'){
   if(this.spaceBusy)return;
 
@@ -507,10 +578,6 @@ today=new Date();
    return;
   }
 
-  if(x.photo){
-   this.problem='O armazenamento de fotos ainda não está disponível no Neon. Remova a foto para salvar.';
-   return;
-  }
 
   this.peopleBusy=true;
 
@@ -535,12 +602,33 @@ today=new Date();
     photo:result.photo_url||''
    };
 
+   // Os dados da pessoa já foram persistidos no Neon.
    if(editing){
     this.data.people=this.people.map(p=>
      p.id===pessoa.id?pessoa:p
     );
    }else{
     this.data.people=[...this.people,pessoa];
+   }
+
+   // Caso o upload falhe, a próxima tentativa edita
+   // a pessoa existente, evitando duplicar o cadastro.
+   this.editId=pessoa.id;
+
+   if(this.selectedPersonPhoto){
+    const file=this.selectedPersonPhoto;
+    try{
+     pessoa.photo=await this.uploadPersonPhoto(pessoa.id,file);
+     this.data.people=this.people.map(p=>
+      p.id===pessoa.id?pessoa:p
+     );
+     this.selectedPersonPhoto=null;
+    }catch(error){
+     const motivo=error instanceof Error?error.message:'Erro desconhecido';
+     throw new Error(
+      'Dados da pessoa salvos no Neon, mas a foto não foi enviada: '+motivo
+     );
+    }
    }
 
    this.closeModal();
