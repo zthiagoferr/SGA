@@ -1,5 +1,5 @@
-<div class="site" [class.light]="theme==='light'">
-  <div class="atmosphere" aria-hidden="true"><div class="aura aura-a"></div><div class="aura aura-b"></div><div class="mesh"></div></div>
+<div class="site" [class.light]="theme==='light'" [attr.data-sga-page]="page">
+  <div class="atmosphere" aria-hidden="true"><div class="aura aura-a"></div><div class="aura aura-b"></div><div class="mesh"></div><div class="sga-v4-bands"></div><div class="sga-v4-trace"></div><div class="sga-v4-grain"></div></div>
   <ng-container *ngIf="view==='landing';else afterLanding">
     <header class="landing-header wrap">
       <button class="logo-lockup" (click)="view='landing'" aria-label="SGA início"><img src="assets/sga-logo.png" alt="SGA" /><span><strong>SGA</strong><small>Gestão de Ambiente</small></span></button>
@@ -73,7 +73,6 @@
             <img src="assets/sga-logo.png" alt="Logo SGA"/><span><strong>SGA</strong><small>Gestão de Ambiente</small></span>
           </button>
           <div class="top-workspace">
-            <span class="workspace-kicker">ESPAÇO DE TRABALHO</span>
             <nav class="workspace-nav" aria-label="Espaço de trabalho">
               <button [class.selected]="page==='overview'" (click)="go('overview')"><span class="top-nav-icon">◫</span>Visão geral</button>
               <button [class.selected]="page==='spaces'" (click)="go('spaces')"><span class="top-nav-icon">▦</span>Ambientes</button>

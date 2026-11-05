@@ -175,3 +175,229 @@
 @media(max-width:700px){.team-section{padding:64px 0 85px}.team-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.team-intro{align-items:start}.team-count{font-size:32px}.team-card-content{min-height:205px}}
 @media(max-width:480px){.team-grid{grid-template-columns:1fr}.team-photo{aspect-ratio:4/3.3}.team-card-content{min-height:0}.team-count{display:none}.team-card h3{font-size:21px}.team-intro{margin-bottom:23px}}
 @media(prefers-reduced-motion:reduce){.team-card{animation:none;transition:none}.team-photo img,.team-link{transition:none}.team-card:hover,.team-card:focus-within{transform:none}.team-card:hover .team-photo img{transform:none}}
+
+
+/* SGA VISUAL REFINADO - v1 */
+/* Nav centralizada na tela, não apenas no espaço entre logo e botões. */
+@media (min-width: 1151px) {
+  .app-topbar { position: sticky; }
+  .app-topbar > .top-workspace {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(620px, 43vw);
+    max-width: min(620px, 43vw);
+    margin: 0;
+    z-index: 1;
+  }
+  .app-topbar > .top-brand,
+  .app-topbar > .top-actions { position: relative; z-index: 2; }
+  .app-topbar > .top-actions { margin-left: auto; }
+}
+@media (min-width: 1151px) and (max-width: 1450px) {
+  /* Em telas intermediárias, mantemos espaço entre logo, navegação e conta. */
+  .app-topbar > .top-workspace { width: min(560px, 40vw); max-width: min(560px, 40vw); }
+}
+@media (max-width: 1150px) {
+  /* Mantém o comportamento responsivo original: menu em linha própria. */
+  .app-topbar > .top-workspace { width: 100%; margin-inline: auto; }
+}
+
+/* Ambiente conectado ao tema e à aba ativa, sem imagens externas ou JavaScript. */
+.site {
+  --sga-ambient-main: 131, 126, 188;
+  --sga-ambient-second: 67, 114, 142;
+  --sga-ambient-line: 142, 147, 190;
+}
+.site[data-sga-page="spaces"] {
+  --sga-ambient-main: 86, 146, 160;
+  --sga-ambient-second: 103, 108, 186;
+  --sga-ambient-line: 98, 155, 172;
+}
+.site[data-sga-page="people"] {
+  --sga-ambient-main: 130, 104, 191;
+  --sga-ambient-second: 57, 126, 141;
+  --sga-ambient-line: 161, 131, 212;
+}
+.site[data-sga-page="bookings"] {
+  --sga-ambient-main: 86, 124, 191;
+  --sga-ambient-second: 83, 150, 140;
+  --sga-ambient-line: 115, 158, 203;
+}
+.site.light {
+  --sga-ambient-main: 116, 109, 178;
+  --sga-ambient-second: 91, 149, 175;
+}
+/* Duas auroras leves em movimento coordenado de 24 segundos. */
+.site .atmosphere .aura-a {
+  width: min(80vw, 1100px);
+  height: min(80vw, 1100px);
+  top: -35%; right: -18%; left: auto; bottom: auto;
+  background: radial-gradient(circle, rgba(var(--sga-ambient-main), .37) 0%, rgba(var(--sga-ambient-main), .12) 32%, transparent 69%);
+  filter: blur(86px);
+  opacity: .48;
+  animation: sgaAuroraOne 24s ease-in-out infinite alternate;
+}
+.site .atmosphere .aura-b {
+  width: min(85vw, 1150px);
+  height: min(85vw, 1150px);
+  bottom: -47%; left: -20%; top: auto; right: auto;
+  background: radial-gradient(circle, rgba(var(--sga-ambient-second), .27) 0%, rgba(var(--sga-ambient-second), .09) 39%, transparent 70%);
+  filter: blur(92px);
+  opacity: .52;
+  animation: sgaAuroraTwo 24s ease-in-out infinite alternate;
+}
+.site .atmosphere .mesh {
+  opacity: .2;
+  background-image: radial-gradient(rgba(var(--sga-ambient-line), .5) .7px, transparent .9px);
+  background-size: 29px 29px;
+  mask-image: linear-gradient(120deg, transparent 10%, #000 53%, transparent 96%);
+  animation: sgaMeshFlow 24s linear infinite;
+}
+.site .atmosphere::after {
+  background: conic-gradient(from 0deg at 50% 50%, transparent 0 68%, rgba(var(--sga-ambient-main), .10) 77%, transparent 88%);
+  opacity: .42;
+  animation: sgaAmbientSweep 24s linear infinite;
+}
+/* Halo sutil no centro do conteúdo, para dar profundidade sem cobrir os cards. */
+.workspace .app-content { position: relative; isolation: isolate; }
+.workspace .app-content::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  top: 8%; left: 12%; right: 12%; height: 440px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(var(--sga-ambient-main), .085), transparent 70%);
+  animation: sgaSoftPulse 12s ease-in-out infinite alternate;
+}
+/* Microinterações sincronizadas; sem deslocar layout. */
+.workspace-nav { transition: border-color .35s ease, box-shadow .35s ease; }
+.workspace-nav:hover { border-color: rgba(var(--sga-ambient-line), .36); box-shadow: 0 12px 44px rgba(0,0,0,.12), inset 0 1px rgba(255,255,255,.09); }
+.workspace-nav button.selected { transition: background .28s ease, box-shadow .28s ease, color .28s ease; }
+.workspace .entity-card, .workspace .person-card, .workspace .panel { transition: transform .32s ease, border-color .32s ease, box-shadow .32s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .workspace .entity-card:hover, .workspace .person-card:hover, .workspace .panel:hover { border-color: rgba(var(--sga-ambient-line), .31); box-shadow: 0 16px 45px rgba(0,0,0,.12); }
+}
+.site.light .atmosphere .aura-a { opacity: .22; }
+.site.light .atmosphere .aura-b { opacity: .18; }
+.site.light .atmosphere .mesh { opacity: .13; }
+.site.light .workspace .app-content::after { opacity: .45; }
+@keyframes sgaAuroraOne { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-8%,11%,0) scale(1.16); } }
+@keyframes sgaAuroraTwo { from { transform: translate3d(0,0,0) scale(1.08); } to { transform: translate3d(10%,-9%,0) scale(.96); } }
+@keyframes sgaMeshFlow { from { background-position: 0 0; } to { background-position: 58px 29px; } }
+@keyframes sgaAmbientSweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes sgaSoftPulse { from { opacity: .4; transform: scale(.94); } to { opacity: .8; transform: scale(1.07); } }
+@media (max-width: 720px) {
+  .site .atmosphere .aura-a, .site .atmosphere .aura-b { filter: blur(60px); opacity: .25; }
+  .workspace .app-content::after { height: 250px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site .atmosphere .aura-a, .site .atmosphere .aura-b,
+  .site .atmosphere .mesh, .site .atmosphere::after,
+  .workspace .app-content::after { animation: none !important; }
+  .workspace-nav, .workspace-nav button.selected,
+  .workspace .entity-card, .workspace .person-card, .workspace .panel { transition: none !important; }
+}
+
+
+/* SGA BLACK TITANIUM V5 */
+/* Superfícies escuras, tipografia legível, efeitos exclusivamente monocromáticos. */
+html,body{background-color:#030303}
+.site:not(.light){background:#030303!important;color-scheme:dark}
+.site:not(.light) .atmosphere{
+ position:fixed;inset:0;overflow:hidden;isolation:isolate;pointer-events:none;
+ background:#030303!important;opacity:1;
+}
+/* Reflexo superior direito, mais prata que branco: deixa o centro do fundo preto. */
+.site:not(.light) .atmosphere .aura-a{
+ position:absolute;top:-42%;right:-35%;left:auto;bottom:auto;
+ width:min(95vw,1250px);height:min(95vw,1250px);
+ background:radial-gradient(circle,rgba(215,217,221,.27) 0%,rgba(100,102,107,.105) 24%,rgba(18,18,20,.04) 43%,transparent 66%);
+ opacity:.67;filter:blur(65px);animation:sgaBlackLightA 24s ease-in-out infinite alternate;
+}
+/* Segundo reflexo, pequeno, surgindo na borda inferior esquerda. */
+.site:not(.light) .atmosphere .aura-b{
+ position:absolute;bottom:-70%;left:-44%;right:auto;top:auto;
+ width:min(104vw,1200px);height:min(104vw,1200px);
+ background:radial-gradient(circle,rgba(187,189,193,.16) 0%,rgba(50,51,54,.08) 30%,transparent 64%);
+ opacity:.62;filter:blur(62px);animation:sgaBlackLightB 29s ease-in-out infinite alternate;
+}
+/* Grade em grafite (não é neon). Só aparece na periferia. */
+.site:not(.light) .atmosphere .mesh{
+ position:absolute;inset:-15%;z-index:1;opacity:.38;
+ background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);
+ background-size:84px 84px;
+ mask-image:radial-gradient(ellipse 95% 80% at 50% 50%,transparent 9%,#000 68%,transparent 100%);
+ animation:sgaBlackGrid 55s linear infinite;
+}
+/* Arestas metálicas: detalhe tecnológico elegante. */
+.site:not(.light) .atmosphere::before{
+ content:"";position:absolute;inset:-20% -40%;z-index:2;pointer-events:none;
+ background:
+ linear-gradient(117deg,transparent 44.6%,rgba(245,245,245,.045) 45%,rgba(255,255,255,.12) 45.12%,rgba(255,255,255,.025) 45.35%,transparent 46.2%),
+ linear-gradient(117deg,transparent 64.7%,rgba(255,255,255,.065) 65%,transparent 65.3%);
+ opacity:.67;transform:translateX(-7%);animation:sgaBlackEdge 22s ease-in-out infinite alternate;
+}
+/* Remove véus e efeitos claros acumulados do visual anterior. */
+.site:not(.light) .atmosphere::after{content:none!important}
+.site:not(.light) .atmosphere .sga-v4-bands,
+.site:not(.light) .atmosphere .sga-v4-trace,
+.site:not(.light) .atmosphere .sga-v4-grain{display:none!important}
+/* Conteúdo em preto: seções não devem parecer cinza-claro. */
+.site:not(.light) .workspace,
+.site:not(.light) .app-content{background:transparent!important}
+.site:not(.light) .app-content::before,
+.site:not(.light) .workspace .app-content::after{background:none!important;box-shadow:none!important}
+/* Cartões em grafite quase preto, com uma borda sutil. */
+.site:not(.light) .workspace .entity-card,
+.site:not(.light) .workspace .person-card,
+.site:not(.light) .workspace .panel,
+.site:not(.light) .workspace .metric{
+ background-color:rgba(13,13,14,.91)!important;
+ border-color:rgba(255,255,255,.12)!important;
+ box-shadow:0 14px 45px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.035);
+ transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+.site:not(.light) .workspace-nav{
+ background:rgba(9,9,10,.95)!important;
+ border-color:rgba(255,255,255,.15)!important;
+ box-shadow:0 16px 44px rgba(0,0,0,.53),inset 0 1px rgba(255,255,255,.07);
+ backdrop-filter:blur(22px);
+}
+.site:not(.light) .workspace-nav button.selected{
+ box-shadow:0 0 0 1px rgba(255,255,255,.17),0 9px 28px rgba(0,0,0,.45);
+}
+@media (hover:hover) and (pointer:fine){
+ .site:not(.light) .workspace .entity-card:hover,
+ .site:not(.light) .workspace .person-card:hover,
+ .site:not(.light) .workspace .panel:hover,
+ .site:not(.light) .workspace .metric:hover{
+  transform:translateY(-4px);
+  border-color:rgba(255,255,255,.29)!important;
+  box-shadow:0 20px 50px rgba(0,0,0,.65),0 0 25px rgba(255,255,255,.035),inset 0 1px rgba(255,255,255,.055);
+ }
+}
+/* Alterações de posição muito suaves conforme a seção ativa. */
+.site:not(.light)[data-sga-page="people"] .atmosphere .aura-a{right:-23%}
+.site:not(.light)[data-sga-page="spaces"] .atmosphere .aura-b{left:-32%}
+.site:not(.light)[data-sga-page="bookings"] .atmosphere::before{opacity:.85}
+@keyframes sgaBlackLightA{from{transform:translate3d(0,-3%,0) scale(1)}to{transform:translate3d(-8%,10%,0) scale(1.15)}}
+@keyframes sgaBlackLightB{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(13%,-10%,0) scale(1.1)}}
+@keyframes sgaBlackGrid{from{background-position:0 0,0 0}to{background-position:84px 84px,84px 84px}}
+@keyframes sgaBlackEdge{from{transform:translateX(-8%);opacity:.32}to{transform:translateX(8%);opacity:.67}}
+@media(max-width:720px){
+ .site:not(.light) .atmosphere .aura-a,.site:not(.light) .atmosphere .aura-b{opacity:.32;filter:blur(52px)}
+ .site:not(.light) .atmosphere .mesh{opacity:.23}
+ .site:not(.light) .atmosphere::before{opacity:.35}
+}
+@media(prefers-reduced-motion:reduce){
+ .site:not(.light) .atmosphere .aura-a,
+ .site:not(.light) .atmosphere .aura-b,
+ .site:not(.light) .atmosphere .mesh,
+ .site:not(.light) .atmosphere::before{animation:none!important}
+ .site:not(.light) .workspace .entity-card,
+ .site:not(.light) .workspace .person-card,
+ .site:not(.light) .workspace .panel,
+ .site:not(.light) .workspace .metric{transition:none!important}
+}
