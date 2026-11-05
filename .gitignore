@@ -5,3 +5,9 @@
 .env.*
 !*.example
 /public/assets/firebase-config.json
+
+node_modules/
+dist/
+.env
+.env.*
+public/assets/firebase-config.json

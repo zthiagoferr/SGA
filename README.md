@@ -1,5 +1,14 @@
 # SGA — Sistema de Gestão de Ambiente
 
+**Projeto independente de gestão de espaços para escolas, empresas e equipes.**
+
+**Arquitetura:** Gabrielle Preis  
+**Engenharia:** Thiago Ferreira de Oliveira (frontend e Firebase Authentication) e Gabriel Balbino Malaquias (backend).
+
+**Documentação:** [Arquitetura e decisões técnicas](docs/ARQUITETURA.md) · [Equipe e responsabilidades](docs/EQUIPE-E-ESCOPO.md) · [Publicação](DEPLOY.md).
+
+> **Estado:** frontend Angular e autenticação Firebase disponíveis na base atual; cadastros ainda locais. API Python e Neon PostgreSQL previstos para a próxima etapa de integração.
+
 Interface Angular 20 independente com a logo SGA enviada, responsiva, tema claro/escuro e animações suaves.
 
 ## Iniciar localmente
